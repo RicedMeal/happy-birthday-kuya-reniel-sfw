@@ -86,30 +86,15 @@ if(!AudioEngine)return;
 try{audioContext=audioContext||new AudioEngine();await audioContext.resume();const start=audioContext.currentTime;
 [523.25,659.25,783.99,1046.5].forEach((frequency,i)=>{const tone=audioContext.createOscillator(),volume=audioContext.createGain();tone.type='sine';tone.frequency.value=frequency;volume.gain.setValueAtTime(0,start+i*.12);volume.gain.linearRampToValueAtTime(.12,start+i*.12+.02);volume.gain.exponentialRampToValueAtTime(.001,start+i*.12+.4);tone.connect(volume);volume.connect(audioContext.destination);tone.start(start+i*.12);tone.stop(start+i*.12+.42)})}catch(error){console.warn('Birthday chime unavailable',error)}
 }
-const activePops=new Set();
-function playFireworkSound(){
-if(!audioContext||audioContext.state!=='running'||!modal.classList.contains('visible'))return;
-const start=audioContext.currentTime,duration=.38;
-const tone=audioContext.createOscillator(),volume=audioContext.createGain();
-tone.type='sine';tone.frequency.setValueAtTime(110,start);tone.frequency.exponentialRampToValueAtTime(38,start+duration);
-volume.gain.setValueAtTime(.001,start);volume.gain.exponentialRampToValueAtTime(.16,start+.008);volume.gain.exponentialRampToValueAtTime(.001,start+duration);
-tone.connect(volume);volume.connect(audioContext.destination);
-const buffer=audioContext.createBuffer(1,Math.ceil(audioContext.sampleRate*duration),audioContext.sampleRate),samples=buffer.getChannelData(0);
-for(let i=0;i<samples.length;i++){const time=i/audioContext.sampleRate;const crackle=Math.pow(Math.max(0,Math.sin(time*190)),12);samples[i]=(Math.random()*2-1)*(time<.045?1:.15+.85*crackle)}
-const noise=audioContext.createBufferSource(),filter=audioContext.createBiquadFilter(),noiseVolume=audioContext.createGain();
-noise.buffer=buffer;filter.type='lowpass';filter.frequency.setValueAtTime(9500,start);filter.frequency.exponentialRampToValueAtTime(1800,start+duration);
-noiseVolume.gain.setValueAtTime(.001,start);noiseVolume.gain.linearRampToValueAtTime(.24,start+.004);noiseVolume.gain.exponentialRampToValueAtTime(.001,start+duration);
-noise.connect(filter);filter.connect(noiseVolume);noiseVolume.connect(audioContext.destination);
-for(const source of [tone,noise]){activePops.add(source);source.onended=()=>{activePops.delete(source);source.disconnect()};source.start(start);source.stop(start+duration)}
-}
-modal.querySelectorAll('.tip-firework').forEach(firework=>{
-for(const eventName of ['animationstart','animationiteration'])firework.addEventListener(eventName,event=>{if(event.animationName==='tip-burst')playFireworkSound()})
-});
-function closeCelebration(){for(const source of activePops){try{source.stop()}catch(error){}}activePops.clear();clearTimeout(modalTimer);clearTimeout(closeTimer);modal.classList.remove('visible');closeTimer=setTimeout(()=>{modal.close();celebrateButton.focus()},reduced?0:400)}
+const fireworkAudio=new Audio('fireworks.mp3');
+fireworkAudio.preload='auto';fireworkAudio.volume=.65;
+function playFireworkRecording(){fireworkAudio.pause();fireworkAudio.currentTime=0;fireworkAudio.play().catch(error=>console.warn('Fireworks audio unavailable',error))}
+function closeCelebration(){fireworkAudio.pause();fireworkAudio.currentTime=0;clearTimeout(modalTimer);clearTimeout(closeTimer);modal.classList.remove('visible');closeTimer=setTimeout(()=>{modal.close();celebrateButton.focus()},reduced?0:400)}
+modal.addEventListener('close',()=>{fireworkAudio.pause();fireworkAudio.currentTime=0});
 modal.querySelector('.modal-close').addEventListener('click',closeCelebration);
 modal.addEventListener('cancel',event=>{event.preventDefault();closeCelebration()});
 celebrateButton.addEventListener('click',()=>{
-burst(230);playChime();
+burst(230);playChime();playFireworkRecording();
 if('speechSynthesis' in window){speechSynthesis.cancel();const greeting=new SpeechSynthesisUtterance('Happy Birthday, Kuya Reniel!');greeting.lang='en-US';greeting.rate=.9;greeting.pitch=1.15;speechSynthesis.speak(greeting)}
 clearTimeout(modalTimer);clearTimeout(closeTimer);if(!modal.open)modal.showModal();
 requestAnimationFrame(()=>requestAnimationFrame(()=>{modal.classList.add('visible');modalTimer=setTimeout(closeCelebration,8400)}));
